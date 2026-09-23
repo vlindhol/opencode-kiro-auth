@@ -1,0 +1,54 @@
+name: Publish master to npm
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: publish-master
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # Required for npm trusted publishing (OIDC)
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install
+
+      - run: bun test
+
+      - run: bun run typecheck
+
+      - run: bun run build
+
+      - name: Setup Node.js for npm publish
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@latest
+
+      # npm rejects re-publishing an existing version, so give every master
+      # build a unique version: major.minor from package.json, patch = run
+      # number (monotonically increasing per workflow), e.g. 2.0.42.
+      - name: Set unique version
+        run: |
+          MAJOR_MINOR=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
+          npm version "${MAJOR_MINOR}.${{ github.run_number }}" --no-git-tag-version
+
+      # Authenticates via OIDC trusted publishing; no token needed.
+      # Provenance attestations are generated automatically.
+      - name: Publish to npm
+        run: npm publish --access public
