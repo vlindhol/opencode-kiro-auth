@@ -379,15 +379,40 @@ export class RequestHandler {
   private async performReauth(showToast: ToastFunction): Promise<boolean> {
     try {
       showToast('Session expired. Re-authenticating...', 'warning')
-      await this.client.provider.oauth.authorize({
-        path: { id: 'kiro' },
-        body: { method: 0 }
-      })
 
-      await this.client.provider.oauth.callback({
-        path: { id: 'kiro' },
-        body: { method: 0 }
-      })
+      // V2 API: Use integration OAuth flow
+      // The client is now a V2 plugin context
+      const ctx = this.client as any
+
+      // Check if we have the V2 integration API
+      if (ctx?.integration?.oauth?.connect) {
+        // Start OAuth flow for the kiro integration
+        const attempt = await ctx.integration.oauth.connect({
+          integrationID: 'kiro',
+          methodID: 'oauth-0'
+        })
+
+        // In V2, the OAuth flow is handled externally - we just trigger it
+        // The user completes auth in their browser, then we reload accounts
+        showToast('Please complete authentication in your browser.', 'info')
+
+        // Wait a bit for the user to complete auth, then reload accounts
+        await this.sleep(5000)
+      } else if (ctx?.provider?.oauth?.authorize) {
+        // V1 fallback
+        await ctx.provider.oauth.authorize({
+          path: { id: 'kiro' },
+          body: { method: 0 }
+        })
+        await ctx.provider.oauth.callback({
+          path: { id: 'kiro' },
+          body: { method: 0 }
+        })
+      } else {
+        // No client available - can't trigger re-auth
+        showToast('Unable to trigger re-authentication. Please run /connect manually.', 'error')
+        return false
+      }
 
       this.repository.invalidateCache()
       const accounts = await this.repository.findAll()

@@ -1,4 +1,5 @@
-import type { AuthHook } from '@opencode-ai/plugin'
+// V2 no longer exports AuthHook - auth methods are now part of integration transforms
+// We keep the method structure for compatibility with the plugin setup
 import type { AccountRepository } from '../../infrastructure/database/account-repository.js'
 import { RegionSchema } from '../../plugin/config/schema.js'
 import * as logger from '../../plugin/logger.js'
@@ -108,7 +109,7 @@ export class AuthHandler {
     this.accountManager = am
   }
 
-  getMethods(): AuthHook['methods'] {
+  getMethods() {
     if (!this.accountManager) {
       return []
     }

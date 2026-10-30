@@ -1,4 +1,10 @@
-import type { AuthOuathResult } from '@opencode-ai/plugin'
+// V2 no longer exports AuthOauthResult - we define and export the type locally
+export interface AuthOauthResult {
+  url: string
+  instructions: string
+  method: 'auto' | 'manual'
+  callback: () => Promise<{ type: 'success'; key: string } | { type: 'failed' }>
+}
 import { execFile } from 'node:child_process'
 import { extractRegionFromArn, normalizeRegion } from '../../constants.js'
 import type { AccountRepository } from '../../infrastructure/database/account-repository.js'
@@ -56,7 +62,7 @@ export class IdcAuthMethod {
     private accountManager: any
   ) {}
 
-  async authorize(inputs?: Record<string, string>): Promise<AuthOuathResult> {
+  async authorize(inputs?: Record<string, string>): Promise<AuthOauthResult> {
     const configuredServiceRegion: KiroRegion = this.config.default_region
     const invokedWithoutPrompts = !inputs || Object.keys(inputs).length === 0
 
